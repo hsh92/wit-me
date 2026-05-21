@@ -173,9 +173,13 @@ export default function LoginPage() {
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 focus:border-transparent outline-none transition"
                 >
-                  <option value="user">일반 사용자</option>
-                  <option value="leader">모임장</option>
+                  <option value="user">일반 사용자 (스터디 검색·참여)</option>
+                  <option value="leader">모임장 (스터디 생성·신청 관리)</option>
                 </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  스터디를 직접 만들려면 <strong>모임장</strong>을 선택하세요.
+                  가입 후에는 역할을 바꿀 수 없습니다.
+                </p>
               </div>
             </>
           )}

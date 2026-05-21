@@ -262,23 +262,11 @@ export const getApplicationById = async (
   return null
 }
 
-export const updateApplication = async (
-  db: Firestore,
-  appId: string,
-  status: 'approved' | 'rejected'
-) => {
-  const appRef = doc(db, 'applications', appId)
-  await updateDoc(appRef, {
-    status,
-    respondedAt: Timestamp.now(),
-  })
-}
-
-export const checkDuplicateApplication = async (
+export const getUserApplicationForStudy = async (
   db: Firestore,
   studyId: string,
   userId: string
-): Promise<boolean> => {
+): Promise<Application | null> => {
   const appsRef = collection(db, 'applications')
   const q = query(
     appsRef,
@@ -286,5 +274,77 @@ export const checkDuplicateApplication = async (
     where('userId', '==', userId)
   )
   const querySnapshot = await getDocs(q)
-  return querySnapshot.size > 0
+  if (querySnapshot.empty) {
+    return null
+  }
+
+  const docSnap = querySnapshot.docs[0]
+  const data = docSnap.data()
+  return {
+    id: docSnap.id,
+    studyId: data.studyId,
+    userId: data.userId,
+    message: data.message,
+    status: data.status,
+    appliedAt: toDate(data.appliedAt),
+    respondedAt: data.respondedAt ? toDate(data.respondedAt) : undefined,
+  }
+}
+
+export type StudyApplicationStats = {
+  approved: number
+  pending: number
+  rejected: number
+}
+
+export const getStudyApplicationStats = async (
+  db: Firestore,
+  studyId: string
+): Promise<StudyApplicationStats> => {
+  const apps = await getApplications(db, studyId)
+  return {
+    approved: apps.filter((a) => a.status === 'approved').length,
+    pending: apps.filter((a) => a.status === 'pending').length,
+    rejected: apps.filter((a) => a.status === 'rejected').length,
+  }
+}
+
+/** 승인된 신청 수를 스터디 currentParticipants에 반영 */
+export const syncStudyApprovedCount = async (
+  db: Firestore,
+  studyId: string
+): Promise<number> => {
+  const stats = await getStudyApplicationStats(db, studyId)
+  await updateStudy(db, studyId, {
+    currentParticipants: stats.approved,
+  })
+  return stats.approved
+}
+
+export const updateApplication = async (
+  db: Firestore,
+  appId: string,
+  status: 'approved' | 'rejected'
+) => {
+  const existing = await getApplicationById(db, appId)
+  if (!existing) {
+    throw new Error('신청 정보를 찾을 수 없습니다.')
+  }
+
+  const appRef = doc(db, 'applications', appId)
+  await updateDoc(appRef, {
+    status,
+    respondedAt: Timestamp.now(),
+  })
+
+  await syncStudyApprovedCount(db, existing.studyId)
+}
+
+export const checkDuplicateApplication = async (
+  db: Firestore,
+  studyId: string,
+  userId: string
+): Promise<boolean> => {
+  const application = await getUserApplicationForStudy(db, studyId, userId)
+  return application !== null
 }

@@ -11,6 +11,7 @@ import {
   getApplications,
   updateApplication,
   getUserProfile,
+  syncStudyApprovedCount,
 } from '@/lib/study-repo'
 import { downloadCSV, formatParticipantData } from '@/lib/csv'
 import { Study, Application, User } from '@/types/domain'
@@ -79,6 +80,11 @@ export default function ManageApplicants() {
       }
 
       setApplications(appsWithDetails)
+
+      const approvedCount = await syncStudyApprovedCount(db, studyId)
+      setStudy((prev) =>
+        prev ? { ...prev, currentParticipants: approvedCount } : prev
+      )
     } catch (err) {
       setError('데이터를 불러오는 데 실패했습니다.')
       console.error(err)
@@ -93,13 +99,21 @@ export default function ManageApplicants() {
   ) => {
     try {
       setUpdatingAppId(appId)
+      setError('')
       const { db } = getFirebaseServices()
       await updateApplication(db, appId, newStatus)
 
       setApplications((prev) =>
         prev.map((app) =>
-          app.id === appId ? { ...app, status: newStatus } : app
+          app.id === appId
+            ? { ...app, status: newStatus, respondedAt: new Date() }
+            : app
         )
+      )
+
+      const approved = await syncStudyApprovedCount(db, studyId)
+      setStudy((prev) =>
+        prev ? { ...prev, currentParticipants: approved } : prev
       )
     } catch (err) {
       setError('신청 상태 변경에 실패했습니다.')
@@ -212,8 +226,13 @@ export default function ManageApplicants() {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             {study.title} - 신청자 관리
           </h1>
-          <p className="text-gray-600 mb-6">
-            신청자: {applications.length}명 | 승인: {approvedApps.length}명 | 대기: {pendingApps.length}명 | 거절: {rejectedApps.length}명
+          <p className="text-gray-600 mb-2">
+            신청자: {applications.length}명 | 승인: {approvedApps.length}명 | 대기:{' '}
+            {pendingApps.length}명 | 거절: {rejectedApps.length}명
+          </p>
+          <p className="text-sm text-gray-500 mb-6">
+            승인 시 스터디 참가자 수({study.currentParticipants}명)가 자동으로
+            갱신됩니다.
           </p>
 
           <button

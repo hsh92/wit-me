@@ -133,6 +133,46 @@ export default function Home() {
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-gray-900 mb-6">스터디 찾기</h2>
 
+          {!user && firebaseUser && (
+            <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 text-sm">
+              프로필 정보를 불러오지 못했습니다. 로그아웃 후 다시 로그인하거나,
+              Firestore에 사용자 문서가 생성되었는지 확인해주세요.
+            </div>
+          )}
+
+          {user?.role === 'leader' && (
+            <div className="mb-6 p-4 bg-indigo-50 border border-indigo-200 rounded-lg flex flex-wrap items-center justify-between gap-3">
+              <p className="text-indigo-900 text-sm">
+                모임장 계정입니다. 상단 <strong>스터디 생성</strong> 버튼으로 새
+                스터디를 만들 수 있습니다. (최대 5개)
+              </p>
+              <Link
+                href="/leader/studies/new"
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-semibold text-sm whitespace-nowrap"
+              >
+                스터디 만들기
+              </Link>
+            </div>
+          )}
+
+          {user?.role === 'user' && (
+            <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 text-sm">
+              <p className="font-semibold text-gray-900 mb-2">
+                스터디를 만들고 싶으신가요?
+              </p>
+              <p className="mb-2">
+                스터디 <strong>생성</strong>은 <strong>모임장</strong> 계정만
+                가능합니다. 현재 계정은 <strong>일반 사용자</strong>입니다.
+              </p>
+              <ol className="list-decimal list-inside space-y-1 text-gray-600">
+                <li>로그아웃합니다.</li>
+                <li>회원가입에서 역할을 <strong>모임장</strong>으로 선택합니다.</li>
+                <li>새 이메일로 가입한 뒤 로그인합니다.</li>
+                <li>상단에 <strong>스터디 생성</strong> 버튼이 표시됩니다.</li>
+              </ol>
+            </div>
+          )}
+
           <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
             <input
               type="text"
@@ -218,7 +258,7 @@ export default function Home() {
                       <div className="flex items-center gap-2">
                         <span className="font-semibold">👥</span>
                         <span>
-                          {study.currentParticipants}/{study.maxParticipants}명
+                          승인 {study.currentParticipants}/{study.maxParticipants}명
                         </span>
                       </div>
                     </div>

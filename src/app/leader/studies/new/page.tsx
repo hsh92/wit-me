@@ -23,6 +23,8 @@ export default function CreateStudy() {
   const [submitting, setSubmitting] = useState(false)
   const [studyCount, setStudyCount] = useState(0)
   const [summarizing, setSummarizing] = useState(false)
+  const [suggestedSummary, setSuggestedSummary] = useState<string | null>(null)
+  const [summaryNotice, setSummaryNotice] = useState('')
 
   const categories = ['프로그래밍', '언어', '자격증', '기타']
 
@@ -140,6 +142,8 @@ export default function CreateStudy() {
 
     setSummarizing(true)
     setError('')
+    setSummaryNotice('')
+    setSuggestedSummary(null)
 
     try {
       const response = await fetch('/api/summarize', {
@@ -148,20 +152,47 @@ export default function CreateStudy() {
         body: JSON.stringify({ description }),
       })
 
-      const data = await response.json()
+      let data: { summary?: string; error?: string; fallback?: boolean } = {}
+      try {
+        data = await response.json()
+      } catch {
+        setError('서버 응답을 읽을 수 없습니다.')
+        return
+      }
 
       if (!response.ok) {
         setError(data.error || '설명 요약에 실패했습니다.')
         return
       }
 
-      setDescription(data.summary)
+      const summary =
+        typeof data.summary === 'string' ? data.summary.trim() : ''
+
+      if (!summary) {
+        setError('요약 결과가 비어 있습니다. 다시 시도해주세요.')
+        return
+      }
+
+      setSuggestedSummary(summary)
+      setSummaryNotice('AI 요약이 완료되었습니다. 아래 결과를 확인한 뒤 설명에 적용하세요.')
     } catch (err) {
       setError('설명 요약 중 네트워크 오류가 발생했습니다.')
       console.error(err)
     } finally {
       setSummarizing(false)
     }
+  }
+
+  const handleApplySummary = () => {
+    if (!suggestedSummary) return
+    setDescription(suggestedSummary)
+    setSummaryNotice('요약 내용을 설명란에 적용했습니다.')
+    setSuggestedSummary(null)
+  }
+
+  const handleDismissSummary = () => {
+    setSuggestedSummary(null)
+    setSummaryNotice('')
   }
 
   if (loading) {
@@ -246,14 +277,64 @@ export default function CreateStudy() {
                   required
                 />
               </div>
-              <button
-                type="button"
-                onClick={handleSummarize}
-                disabled={summarizing || !description.trim()}
-                className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200 disabled:bg-gray-100 disabled:text-gray-400 transition font-semibold"
-              >
-                ✨ AI로 요약하기
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleSummarize}
+                  disabled={summarizing || !description.trim()}
+                  className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm hover:bg-blue-200 disabled:bg-gray-100 disabled:text-gray-400 transition font-semibold"
+                >
+                  {summarizing ? '요약 생성 중...' : '✨ AI로 요약하기'}
+                </button>
+                {summarizing && (
+                  <span className="text-sm text-gray-500">
+                    약 5~15초 소요될 수 있습니다.
+                  </span>
+                )}
+              </div>
+
+              {error && (
+                <p className="mt-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                  {error}
+                </p>
+              )}
+
+              {summaryNotice && !suggestedSummary && (
+                <p className="mt-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                  {summaryNotice}
+                </p>
+              )}
+
+              {suggestedSummary && (
+                <div
+                  className="mt-3 p-4 bg-blue-50 border-2 border-blue-300 rounded-lg"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <p className="text-sm font-semibold text-blue-900 mb-2">
+                    AI 요약 결과
+                  </p>
+                  <p className="text-gray-800 whitespace-pre-wrap mb-4">
+                    {suggestedSummary}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={handleApplySummary}
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-semibold text-sm"
+                    >
+                      설명에 적용
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDismissSummary}
+                      className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition font-semibold text-sm"
+                    >
+                      닫기
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-6">
@@ -318,12 +399,6 @@ export default function CreateStudy() {
                 required
               />
             </div>
-
-            {error && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-                {error}
-              </div>
-            )}
 
             <div className="flex gap-4">
               <button

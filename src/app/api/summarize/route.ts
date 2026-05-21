@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { summarizeDescription } from '@/lib/openai'
 
+export const runtime = 'nodejs'
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -21,8 +23,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const summary = await summarizeDescription(description)
-    return NextResponse.json({ summary })
+    const result = await summarizeDescription(description)
+    return NextResponse.json({
+      summary: result.summary,
+      fallback: result.fallback,
+    })
   } catch (error) {
     const message =
       error instanceof Error ? error.message : '요약 처리 중 오류가 발생했습니다.'

@@ -70,18 +70,94 @@ npm run dev
 # 단위 테스트
 npm test
 
-# 프로덕션 빌드
+# 프로덕션 빌드 (아래 「npm run build 상세」 참고)
 npm run build
 
-# 프로덕션 서버 실행
+# 프로덕션 서버 실행 (빌드 후 로컬에서 배포 결과 확인)
 npm start
 ```
 
 개발 서버는 http://localhost:3000 에서 실행됩니다.
 
+---
+
+## npm run build 상세
+
+`npm run build`는 **개발용 코드를 배포 가능한 프로덕션 결과물로 변환**하는 명령입니다.  
+실행하면 내부적으로 `next build`가 동작합니다.
+
+### 실행 시 수행되는 작업
+
+| 단계 | 설명 | 결과물 |
+|------|------|--------|
+| 1. 컴파일 | TypeScript → JavaScript 변환, React/Next.js 번들링 | `.next/` 내부 |
+| 2. 린트·타입 검사 | 타입 오류·기본 린트 검사 (오류 시 빌드 실패) | — |
+| 3. 페이지 데이터 수집 | 각 라우트의 정적/동적 렌더링 방식 결정 | 빌드 로그에 `○` / `ƒ` 표시 |
+| 4. 정적 페이지 생성 | 가능한 페이지 HTML·JS 사전 생성 | `.next/server/` |
+| 5. 최적화·트레이스 | 코드 분할, 청크 크기·의존성 분석 | `.next/` |
+
+### 빌드 로그 기호 의미
+
+- `○ (Static)` : 빌드 시점에 HTML을 미리 만들어 두는 **정적 페이지** (예: `/`, `/login`)
+- `ƒ (Dynamic)` : 요청 시 서버에서 그리는 **동적 페이지** (예: `/studies/[id]`, `/api/summarize`)
+
+### 생성·변경되는 주요 폴더
+
+```
+.next/                 # 빌드 산출물 (Git에 커밋하지 않음)
+├── cache/             # 빌드 캐시
+├── server/            # 서버 렌더링용 번들
+└── static/            # 정적 자산 (JS/CSS 등)
+```
+
+### 빌드 성공 후 할 수 있는 것
+
+```bash
+npm start    # .next 기반 프로덕션 서버 (기본 http://localhost:3000)
+```
+
+- **로컬에서 배포 전 최종 확인**할 때 사용합니다.
+- Firebase Hosting 배포 시에도 이 빌드 결과를 기반으로 업로드됩니다.
+
+### 빌드 실패 시 흔한 원인
+
+- TypeScript 타입 오류 (`Property ... does not exist` 등)
+- `NEXT_PUBLIC_*` 환경 변수 누락 (런타임이 아닌 일부 빌드 단계에서 참조 시)
+- `.next` 캐시 손상 → `.next` 폴더 삭제 후 재실행
+
+```bash
+# Windows PowerShell
+Remove-Item -Recurse -Force .next
+npm run build
+```
+
+---
+
 ## Firestore 보안 규칙 배포
 
-Firebase Console에서 Firestore Security Rules를 다음과 같이 설정합니다:
+### Firebase CLI로 배포 (권장)
+
+프로젝트에 `firebase.json`, `.firebaserc`, `firestore.rules`가 포함되어 있습니다.
+
+```bash
+# Firebase CLI 설치 (최초 1회)
+npm install -g firebase-tools
+
+# 로그인 (최초 1회)
+firebase login
+
+# Firestore 보안 규칙만 배포
+firebase deploy --only firestore:rules
+```
+
+**배포 결과 (프로젝트 `moim-a8368`)**
+
+| 항목 | 상태 |
+|------|------|
+| Firestore Rules | ✅ `firestore.rules` 배포 완료 |
+| Firebase Console | https://console.firebase.google.com/project/moim-a8368/overview |
+
+### Firebase Console에서 수동 배포
 
 1. Firebase Console → Firestore Database → Rules 탭
 2. `firestore.rules` 파일의 내용을 복사하여 Rules 편집기에 붙여넣기
@@ -171,9 +247,10 @@ npm run test:watch
 
 ```
 src/lib/__tests__/
-├── auth-errors.test.ts   # Firebase/Firestore 오류 메시지 변환
-├── csv-utils.test.ts     # CSV 생성 및 이스케이프 처리
-└── validation.test.ts    # 입력값 유효성 검사 규칙
+├── auth-errors.test.ts        # Firebase/Firestore 오류 메시지 변환
+├── application-status.test.ts # 신청 상태 라벨·메시지
+├── csv-utils.test.ts          # CSV 생성 및 이스케이프 처리
+└── validation.test.ts         # 입력값 유효성 검사 규칙
 ```
 
 ### 테스트 대상 및 케이스
@@ -320,15 +397,11 @@ brew install gh
 gh auth login
 ```
 
-### 업로드 결과 (2026-05-21)
+### 최신 반영 내용
 
-| 항목 | 내용 |
-|---|---|
-| 커밋 해시 | `57b65bb` |
-| 커밋 메시지 | `feat: Wit.me MVP 초기 구현` |
-| 파일 수 | 35개 |
-| 총 코드 라인 | 7,850줄 |
-| 보안 | `.env.local` 제외 확인 완료 |
+- Firebase CLI: `firebase.json`, `.firebaserc`, `firestore.indexes.json`
+- 참여 신청 상태 UI, 승인 시 참가자 수 동기화
+- AI 요약 미리보기, `npm run build` 상세 문서
 
 ---
 
@@ -355,15 +428,58 @@ GitHub 리포지토리 연결 후 아래 순서로 진행합니다.
 4. Deploy 클릭
 5. 이후 `master` 브랜치에 push 할 때마다 자동 재배포
 
-### Firebase Hosting 배포
+### Firebase Hosting 배포 (Next.js + Cloud Functions)
+
+동적 라우트(`/studies/[id]`, `/api/summarize` 등) 때문에 Hosting만으로는 부족하며, Firebase가 **Cloud Functions**를 함께 생성합니다.
 
 ```bash
-npm install -g firebase-tools
-firebase login
-firebase init hosting
+# 웹 프레임워크 실험 기능 활성화 (최초 1회)
+firebase experiments:enable webframeworks
+
+# 빌드는 deploy 시 자동 실행되지만, 로컬에서 먼저 확인하려면:
 npm run build
-firebase deploy
+
+# Hosting + Functions 배포
+firebase deploy --only hosting
 ```
+
+**사전 요구 사항**
+
+- Firebase 프로젝트 **Blaze(종량제)** 요금제 (Cloud Functions 사용 시)
+- [Google Cloud Console](https://console.cloud.google.com/) → API 및 서비스에서 아래 API 사용 설정:
+  - Cloud Functions API
+  - Cloud Build API
+  - Artifact Registry API
+
+**Hosting 배포 오류 `Failed to list functions` 발생 시**
+
+1. Firebase Console → 프로젝트 설정 → **Blaze 요금제**로 업그레이드
+2. Google Cloud Console에서 Cloud Functions API 활성화
+3. `firebase deploy --only hosting` 재실행
+
+배포 성공 시 터미널에 `Hosting URL: https://moim-a8368.web.app` 형태로 표시됩니다.
+
+### npm 배포 스크립트 (package.json)
+
+```bash
+npm run deploy:rules    # Firestore 규칙만 배포
+npm run deploy:hosting  # Hosting(+Functions) 배포
+```
+
+---
+
+## 참여 신청 및 참가자 수
+
+| 단계 | 신청자 화면 | 참가자 수 |
+|------|-------------|-----------|
+| 신청 직후 | **승인 대기** (내 신청 현황 박스) | 변동 없음 (대기 인원만 표시) |
+| 모임장 승인 후 | **참여 승인** | **승인된 참가자** 수 증가 |
+| 모임장 거절 후 | **참여 거절** | 변동 없음 |
+
+- 목록 카드: `승인 N / 정원 M명` 형식으로 표시
+- 모임장이 신청자 관리에서 승인·거절 시 `currentParticipants` 자동 동기화
+
+---
 
 ## 문제 해결
 
