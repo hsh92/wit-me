@@ -1,0 +1,54 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isStudyLeader(studyId) {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/studies/$(studyId)).data.leaderUid == request.auth.uid;
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() &&
+        request.auth.uid == userId &&
+        request.resource.data.keys().hasAll(['email', 'displayName', 'role', 'createdAt']) &&
+        request.resource.data.role in ['user', 'leader'];
+      allow update: if isSignedIn() && request.auth.uid == userId;
+      allow delete: if false;
+    }
+
+    match /studies/{studyId} {
+      allow read: if isSignedIn() && (
+        resource.data.status == 'open' ||
+        resource.data.leaderUid == request.auth.uid
+      );
+      allow create: if isSignedIn() &&
+        request.resource.data.leaderUid == request.auth.uid &&
+        request.resource.data.status == 'open';
+      allow update, delete: if isSignedIn() &&
+        resource.data.leaderUid == request.auth.uid;
+    }
+
+    match /applications/{appId} {
+      allow read: if isSignedIn() && (
+        request.auth.uid == resource.data.userId ||
+        isStudyLeader(resource.data.studyId)
+      );
+
+      allow create: if isSignedIn() &&
+        request.auth.uid == request.resource.data.userId &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.keys().hasAll(['studyId', 'userId', 'message', 'status', 'appliedAt']);
+
+      allow update: if isStudyLeader(resource.data.studyId) &&
+        request.resource.data.userId == resource.data.userId &&
+        request.resource.data.studyId == resource.data.studyId &&
+        request.resource.data.status in ['approved', 'rejected'];
+
+      allow delete: if false;
+    }
+  }
+}
