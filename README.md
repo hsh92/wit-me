@@ -267,14 +267,93 @@ const { db } = getFirebaseServices()
 const study = await getStudy(db, studyId)
 ```
 
+## GitHub 업로드
+
+### 리포지토리 정보
+
+- **URL**: https://github.com/hsh92/wit-me
+- **공개 범위**: Public
+- **기본 브랜치**: `master`
+
+### 처음 업로드하는 경우 (최초 1회)
+
+```bash
+# 1. Git 초기화
+git init
+
+# 2. 줄바꿈 설정 (.gitattributes 파일이 이미 포함되어 있음)
+git add .
+
+# 3. 첫 커밋
+git commit -m "feat: 초기 구현"
+
+# 4. GitHub CLI로 리포지토리 생성 및 push (GitHub CLI 설치 필요)
+gh repo create wit-me --public --source=. --remote=origin --push
+```
+
+> **주의**: `.env.local`은 `.gitignore`에 등록되어 있어 자동으로 제외됩니다.  
+> API 키가 GitHub에 올라가지 않도록 커밋 전 반드시 확인하세요.
+
+### 이후 변경 사항 업로드
+
+```bash
+# 변경된 파일 스테이징
+git add .
+
+# 커밋
+git commit -m "변경 내용 요약"
+
+# push
+git push origin master
+```
+
+### GitHub CLI 설치 (미설치 시)
+
+```bash
+# Windows (winget)
+winget install GitHub.cli
+
+# macOS (Homebrew)
+brew install gh
+
+# 설치 후 로그인
+gh auth login
+```
+
+### 업로드 결과 (2026-05-21)
+
+| 항목 | 내용 |
+|---|---|
+| 커밋 해시 | `57b65bb` |
+| 커밋 메시지 | `feat: Wit.me MVP 초기 구현` |
+| 파일 수 | 35개 |
+| 총 코드 라인 | 7,850줄 |
+| 보안 | `.env.local` 제외 확인 완료 |
+
+---
+
 ## 배포
 
 ### Vercel 배포 (권장)
 
-1. GitHub에 코드 푸시
-2. [Vercel](https://vercel.com)에서 프로젝트 연결
-3. 환경변수 설정
-4. Deploy
+GitHub 리포지토리 연결 후 아래 순서로 진행합니다.
+
+1. [Vercel](https://vercel.com)에서 GitHub 계정으로 로그인
+2. `hsh92/wit-me` 리포지토리 Import
+3. Environment Variables 탭에서 아래 값 입력:
+
+| 변수명 | 값 |
+|---|---|
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | Firebase 설정값 |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Firebase 설정값 |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Firebase 설정값 |
+| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | Firebase 설정값 |
+| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Firebase 설정값 |
+| `NEXT_PUBLIC_FIREBASE_APP_ID` | Firebase 설정값 |
+| `OPENAI_API_KEY` | OpenAI API 키 (선택) |
+
+4. Deploy 클릭
+5. 이후 `master` 브랜치에 push 할 때마다 자동 재배포
 
 ### Firebase Hosting 배포
 
